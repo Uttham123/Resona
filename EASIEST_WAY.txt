@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════
+  EASIEST WAY TO UPLOAD ALL FILES TO GITHUB
+═══════════════════════════════════════════════════════
+
+✅ GOOD NEWS: All your files are already committed locally!
+   You just need to push them to GitHub.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  METHOD: GitHub Desktop (Takes 2 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: Download GitHub Desktop
+   → Go to: https://desktop.github.com/
+   → Click "Download for macOS"
+   → Install it (drag to Applications)
+
+STEP 2: Open GitHub Desktop
+   → Sign in with your GitHub account (Uttham123)
+
+STEP 3: Add Your Repository
+   → Click "File" → "Add Local Repository"
+   → Click "Choose..." 
+   → Navigate to: Desktop → Resona
+   → Click "Add Repository"
+
+STEP 4: Push Everything
+   → You'll see ALL your files (client/, server/, everything!)
+   → Click "Publish repository" button (top right)
+   → Make sure it says: "Uttham123/Resona"
+   → Click "Publish Repository"
+   → DONE! ✅
+
+That's it! All your files (client, server, everything) will be on GitHub.
+
+═══════════════════════════════════════════════════════
+
