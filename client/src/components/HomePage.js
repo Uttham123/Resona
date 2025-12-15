@@ -78,7 +78,7 @@ const HomePage = ({ notebooks = [] }) => {
     });
   };
 
-  // Filtered data
+  // Filtered data - allMyNotes and allLatestResearch are constants, so we can safely ignore them in deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const myNotes = useMemo(() => filterResearch(allMyNotes, searchQuery), [searchQuery]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
