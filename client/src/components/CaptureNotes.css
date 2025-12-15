@@ -101,6 +101,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+}
+
+.icon-button svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 /* Form */
