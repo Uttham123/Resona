@@ -4,7 +4,7 @@ import './ExistingResearch.css';
 
 const ExistingResearch = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams(); // eslint-disable-line no-unused-vars
 
   // Helper to generate timestamp
   const generateTimestamp = (daysAgo = 0) => {
