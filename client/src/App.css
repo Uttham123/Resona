@@ -1,0 +1,7 @@
+@import './styles/designTokens.css';
+
+.App {
+  min-height: 100vh;
+  background: var(--color-grey-t5);
+}
+
