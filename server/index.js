@@ -8,9 +8,17 @@ const { v4: uuidv4 } = require('uuid');
 const { google } = require('googleapis');
 const axios = require('axios');
 const PDFDocument = require('pdfkit');
+const connectDB = require('./config/database');
+const Notebook = require('./models/Notebook');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+
+// Connect to MongoDB
+connectDB().catch(err => {
+  console.error('Failed to connect to MongoDB:', err);
+  // Continue running even if DB fails (for development)
+});
 
 // Middleware
 const allowedOrigins = [
@@ -803,6 +811,32 @@ app.post('/api/notebook/create', async (req, res) => {
       progress: 100
     });
 
+    // Save notebook to database
+    let savedNotebook = null;
+    try {
+      // Parse researchers string into array
+      const researchersArray = typeof researchers === 'string' 
+        ? researchers.split(',').map(r => r.trim()).filter(r => r)
+        : Array.isArray(researchers) ? researchers : [];
+
+      savedNotebook = await Notebook.create({
+        projectName: projectName.trim(),
+        date: new Date(date),
+        researchers: researchersArray,
+        userCohorts: userCohorts.trim(),
+        methodology: methodology,
+        audioFileCount: uploadedAudioFiles.length,
+        googleDriveFolderId: projectFolderId,
+        googleDriveFolderUrl: folderResponse.data.webViewLink
+      });
+
+      console.log(`✓ Saved notebook to database: ${savedNotebook._id}`);
+    } catch (dbError) {
+      console.error('✗ Error saving to database:', dbError.message);
+      // Don't fail the request if DB save fails, but log it
+      // The notebook is still created in Google Drive
+    }
+
     const response = {
       success: true,
       message: `Research notebook "${projectName}" created successfully`,
@@ -812,7 +846,8 @@ app.post('/api/notebook/create', async (req, res) => {
       folderId: projectFolderId,
       folderLink: folderResponse.data.webViewLink,
       audioFilesCount: uploadedAudioFiles.length,
-      progressId: progressId
+      progressId: progressId,
+      notebookId: savedNotebook?._id || null
     };
 
     // Clean up progress after 30 seconds
@@ -846,6 +881,202 @@ app.get('/api/notebook/progress/:progressId', (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// NOTEBOOK DATA ENDPOINTS
+// ============================================
+
+// Get all notebooks with optional search and pagination
+app.get('/api/notebooks', async (req, res) => {
+  try {
+    const { search, limit = 50, offset = 0, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    
+    // Build query
+    const query = {};
+    
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { projectName: searchRegex },
+        { userCohorts: searchRegex },
+        { researchers: { $in: [searchRegex] } }
+      ];
+    }
+
+    // Build sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Execute query
+    const notebooks = await Notebook.find(query)
+      .sort(sort)
+      .limit(parseInt(limit))
+      .skip(parseInt(offset))
+      .select('-insights -opportunities -painPoints') // Exclude notes for list view
+      .lean();
+
+    const total = await Notebook.countDocuments(query);
+
+    res.json({
+      success: true,
+      notebooks,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('Error fetching notebooks:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch notebooks',
+      details: error.message 
+    });
+  }
+});
+
+// Get single notebook by ID
+app.get('/api/notebooks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const notebook = await Notebook.findById(id);
+    
+    if (!notebook) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Notebook not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      notebook
+    });
+  } catch (error) {
+    console.error('Error fetching notebook:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch notebook',
+      details: error.message 
+    });
+  }
+});
+
+// Update notebook notes (insights, opportunities, painPoints)
+app.put('/api/notebooks/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, noteId, text } = req.body;
+
+    if (!type || !['insights', 'opportunities', 'painPoints'].includes(type)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid note type. Must be: insights, opportunities, or painPoints' 
+      });
+    }
+
+    if (!noteId || !text) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'noteId and text are required' 
+      });
+    }
+
+    const notebook = await Notebook.findById(id);
+    
+    if (!notebook) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Notebook not found' 
+      });
+    }
+
+    // Find and update the note
+    const noteArray = notebook[type];
+    const noteIndex = noteArray.findIndex(note => note.id === noteId);
+
+    if (noteIndex === -1) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Note not found' 
+      });
+    }
+
+    // Update the note
+    noteArray[noteIndex].text = text;
+    noteArray[noteIndex].timestamp = new Date();
+
+    await notebook.save();
+
+    res.json({
+      success: true,
+      message: 'Note updated successfully',
+      notebook
+    });
+  } catch (error) {
+    console.error('Error updating note:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to update note',
+      details: error.message 
+    });
+  }
+});
+
+// Add new note to notebook
+app.post('/api/notebooks/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, text } = req.body;
+
+    if (!type || !['insights', 'opportunities', 'painPoints'].includes(type)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid note type. Must be: insights, opportunities, or painPoints' 
+      });
+    }
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'text is required' 
+      });
+    }
+
+    const notebook = await Notebook.findById(id);
+    
+    if (!notebook) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Notebook not found' 
+      });
+    }
+
+    // Add new note
+    const newNote = {
+      id: new require('mongoose').Types.ObjectId().toString(),
+      text: text.trim(),
+      timestamp: new Date()
+    };
+
+    notebook[type].push(newNote);
+    await notebook.save();
+
+    res.json({
+      success: true,
+      message: 'Note added successfully',
+      note: newNote,
+      notebook
+    });
+  } catch (error) {
+    console.error('Error adding note:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to add note',
+      details: error.message 
+    });
+  }
 });
 
 app.listen(PORT, () => {

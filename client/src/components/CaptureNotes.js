@@ -15,12 +15,15 @@ const CaptureNotes = () => {
     userCohorts: '',
     researchType: '',
     audioFiles: [],
+    observations: '',
+    observationFile: null,
     googleToken: ''
   });
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
+  const observationFileInputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
 
   const handleInputChange = (field, value) => {
@@ -91,6 +94,34 @@ const CaptureNotes = () => {
       ...prev,
       audioFiles: prev.audioFiles.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleObservationFileSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Only allow text files or common document formats
+      if (file.type.startsWith('text/') || 
+          file.type === 'application/pdf' || 
+          file.type === 'application/msword' ||
+          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFormData(prev => ({
+          ...prev,
+          observationFile: file
+        }));
+      } else {
+        setError('Please upload a text file or document');
+      }
+    }
+  };
+
+  const removeObservationFile = () => {
+    setFormData(prev => ({
+      ...prev,
+      observationFile: null
+    }));
+    if (observationFileInputRef.current) {
+      observationFileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -282,7 +313,9 @@ const CaptureNotes = () => {
         <form onSubmit={handleSubmit}>
           {/* Goal/Objective */}
           <div className="form-field">
-            <label className="field-label">Goal/ Objective</label>
+            <label className="field-label">
+              Goal/ Objective <span className="required-asterisk">*</span>
+            </label>
             <input
               type="text"
               className="form-input"
@@ -294,7 +327,9 @@ const CaptureNotes = () => {
 
           {/* Date of Research */}
           <div className="form-field">
-            <label className="field-label">Date of Research</label>
+            <label className="field-label">
+              Date of Research <span className="required-asterisk">*</span>
+            </label>
             <div className="date-input-wrapper">
               <input
                 type="date"
@@ -314,7 +349,9 @@ const CaptureNotes = () => {
 
           {/* Researchers */}
           <div className="form-field">
-            <label className="field-label">Researchers</label>
+            <label className="field-label">
+              Researchers <span className="required-asterisk">*</span>
+            </label>
             <div className="researchers-input-wrapper">
               {formData.researchers.map((researcher, index) => (
                 <span key={index} className="researcher-chip">
@@ -346,7 +383,9 @@ const CaptureNotes = () => {
 
           {/* User Cohorts */}
           <div className="form-field">
-            <label className="field-label">User Cohorts</label>
+            <label className="field-label">
+              User Cohorts <span className="required-asterisk">*</span>
+            </label>
             <input
               type="text"
               className="form-input"
@@ -358,7 +397,9 @@ const CaptureNotes = () => {
 
           {/* Research Type */}
           <div className="form-field">
-            <label className="field-label">Research Type</label>
+            <label className="field-label">
+              Research Type <span className="required-asterisk">*</span>
+            </label>
             <div className="select-wrapper">
               <select
                 className="form-input form-select"
@@ -377,7 +418,9 @@ const CaptureNotes = () => {
 
           {/* Audio Files */}
           <div className="form-field">
-            <label className="field-label">Audio Files</label>
+            <label className="field-label">
+              Add Audio Files <span className="required-asterisk">*</span>
+            </label>
             <div
               className={`audio-upload-area ${dragActive ? 'drag-active' : ''}`}
               onDragEnter={handleDrag}
@@ -387,10 +430,18 @@ const CaptureNotes = () => {
               onClick={() => fileInputRef.current?.click()}
             >
               <p className="upload-text">Add Audio Files</p>
-              <svg className="upload-icon" width="26" height="20" viewBox="0 0 26 20" fill="none">
-                <rect width="26" height="20" rx="2" fill="#9F2089" fillOpacity="0.1"/>
-                <path d="M13 6V14M9 10L13 6L17 10" stroke="#9F2089" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <div className="audio-icon-wrapper">
+                <svg className="audio-icon-base" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2C8.89543 2 8 2.89543 8 4V10C8 11.1046 8.89543 12 10 12C11.1046 12 12 11.1046 12 10V4C12 2.89543 11.1046 2 10 2Z" fill="#9F2089"/>
+                  <path d="M13 7V10C13 11.6569 11.6569 13 10 13C8.34315 13 7 11.6569 7 10V7H5V10C5 12.7614 7.23858 15 10 15C12.7614 15 15 12.7614 15 10V7H13Z" fill="#9F2089"/>
+                </svg>
+                <div className="audio-icon-badge">
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="4.5" cy="4.5" r="4.5" fill="#9F2089"/>
+                    <path d="M4.5 2.5V6.5M2.5 4.5H6.5" stroke="white" strokeWidth="1" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              </div>
             </div>
             <input
               ref={fileInputRef}
@@ -417,6 +468,49 @@ const CaptureNotes = () => {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add Observations */}
+          <div className="form-field">
+            <label className="field-label">Add Observations</label>
+            <div className="observations-input-wrapper">
+              <input
+                type="text"
+                className="form-input observations-input"
+                placeholder="Type or Upload text notes"
+                value={formData.observations}
+                onChange={(e) => handleInputChange('observations', e.target.value)}
+              />
+              <button
+                type="button"
+                className="attach-button"
+                onClick={() => observationFileInputRef.current?.click()}
+                title="Upload text file"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8.5 2.5L13.5 7.5M13.5 7.5H10.5C10.2239 7.5 10 7.27614 10 7V3.5M13.5 7.5V12.5C13.5 13.3284 12.8284 14 12 14H4C3.17157 14 2.5 13.3284 2.5 12.5V3.5C2.5 2.67157 3.17157 2 4 2H8.5" stroke="#8B8BA3" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <input
+                ref={observationFileInputRef}
+                type="file"
+                accept=".txt,.doc,.docx,.pdf"
+                onChange={handleObservationFileSelect}
+                style={{ display: 'none' }}
+              />
+            </div>
+            {formData.observationFile && (
+              <div className="observation-file-item">
+                <span>{formData.observationFile.name}</span>
+                <button
+                  type="button"
+                  onClick={removeObservationFile}
+                  className="remove-file"
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>
