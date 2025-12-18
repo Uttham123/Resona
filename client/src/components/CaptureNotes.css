@@ -262,8 +262,8 @@
 }
 
 .audio-icon-base {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   position: relative;
 }
 
@@ -646,6 +646,8 @@
 
 .attach-button svg {
   display: block;
+  width: 20px;
+  height: 22px;
 }
 
 .observation-file-item {
