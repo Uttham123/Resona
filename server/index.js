@@ -24,6 +24,8 @@ connectDB().catch(err => {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://resona-frontend-production.up.railway.app',
+  'https://resona-frontend.up.railway.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -31,14 +33,42 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
+    
+    // In production, check against allowed origins
+    // In development, allow all localhost origins
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        // Also allow any Railway frontend URL (for flexibility)
+        if (origin.includes('railway.app') || origin.includes('up.railway.app')) {
+          callback(null, true);
+        } else {
+          console.warn(`CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // In development, allow all origins
+      callback(null, true);
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
+// Handle preflight requests explicitly
+app.options('*', cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
